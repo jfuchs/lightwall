@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { memo, useState, useCallback } from 'react'
+import Peg from './Peg'
 
-type BoardColumn = Array<boolean>
-type Board = Array<BoardColumn>
+type BoardColumnData = Array<boolean>
+type Board = Array<BoardColumnData>
 
-const pegsWide = 16
-const pegsTall = 9
+const pegsWide = 32
+const pegsTall = 32
 const pegSpacing = 70
 const pegMargin = 40
-const pegRadius = 20
 
 const emptyBoard = (): Board => {
   const result: Board = []
@@ -21,33 +21,19 @@ const emptyBoard = (): Board => {
   return result
 }
 
-type PegProps = {
-  isOn: boolean
-  onClick: () => void
-}
-
-const Peg = function Peg({ isOn, onClick }: PegProps) {
-  return (
-    <circle
-      r={pegRadius}
-      onClick={onClick}
-      style={{
-        fill: isOn ? '#0f0' : '#000',
-        cursor: 'pointer'
-      }}
-    />
-  )
-}
-
 export default function Board() {
   const [board, setBoard] = useState<Board>(emptyBoard())
-
-  function setBoardPeg(i: number, j: number, value: boolean) {
-    let newBoard = Array.from(board)
-    newBoard[i] = Array.from(newBoard[i])
-    newBoard[i][j] = value
-    setBoard(newBoard)
-  }
+  const setBoardPeg = useCallback(
+    (i: number, j: number, value: boolean) => {
+      setBoard(prevBoard => {
+        let nextBoard = Array.from(prevBoard)
+        nextBoard[i] = Array.from(nextBoard[i])
+        nextBoard[i][j] = value
+        return nextBoard
+      })
+    },
+    [setBoard]
+  )
 
   return (
     <>
@@ -57,21 +43,36 @@ export default function Board() {
         width={pegSpacing * (pegsWide - 1) + pegMargin * 2}
       >
         {board.map((boardColumn, i) => {
-          return boardColumn.map((isOn, j) => {
-            const x = pegSpacing * i * 0.5 + pegMargin
-            const y =
-              pegSpacing * j + pegMargin + (i % 2 === 0 ? 0 : pegSpacing / 2)
-            return (
-              <g key={`${i},${j}`} transform={`translate(${x}, ${y})`}>
-                <Peg
-                  isOn={isOn}
-                  onClick={setBoardPeg.bind(null, i, j, !isOn)}
-                />
-              </g>
-            )
-          })
+          return (
+            <BoardColumn
+              key={i}
+              i={i}
+              boardColumn={boardColumn}
+              setBoardPeg={setBoardPeg}
+            />
+          )
         })}
       </svg>
     </>
   )
 }
+
+type BoardColumnProps = {
+  i: number
+  boardColumn: BoardColumnData
+  setBoardPeg: (i: number, j: number, value: boolean) => void
+}
+
+const BoardColumn = memo(function BoardColumn({
+  i,
+  boardColumn,
+  setBoardPeg
+}: BoardColumnProps) {
+  return (
+    <>
+      {boardColumn.map((isOn, j) => {
+        return <Peg key={j} i={i} j={j} isOn={isOn} setBoardPeg={setBoardPeg} />
+      })}
+    </>
+  )
+})
