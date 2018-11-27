@@ -15,7 +15,7 @@ type BoardData = Array<BoardRowData>
 function useLayout() {
   return useMemo(
     () =>
-      new Layout({ pegsWide: 19, pegsTall: 19, pegSpacing: 30, pegMargin: 30 }),
+      new Layout({ pegsWide: 79, pegsTall: 39, pegSpacing: 30, pegMargin: 30 }),
     []
   )
 }
