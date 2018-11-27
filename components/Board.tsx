@@ -1,54 +1,79 @@
-import { memo, useState, useCallback } from 'react'
+import { memo, useState, useCallback, useMemo } from 'react'
 import Peg from './Peg'
+import Layout from './Layout'
 
-type BoardColumnData = Array<boolean>
-type Board = Array<BoardColumnData>
+type PegData = {
+  pegId: number
+  x: number
+  y: number
+  voronoiPath: string
+  color: boolean
+}
+type BoardRowData = Array<PegData>
+type BoardData = Array<BoardRowData>
 
-const pegsWide = 32
-const pegsTall = 32
-const pegSpacing = 70
-const pegMargin = 40
-
-const emptyBoard = (): Board => {
-  const result: Board = []
-  for (let i = 0; i < pegsWide * 2 - 1; i++) {
-    result[i] = []
-    const pegCount = i % 2 === 0 ? pegsTall : pegsTall - 1
-    for (let j = 0; j < pegCount; j++) {
-      result[i][j] = Boolean(Math.round(Math.random()))
-    }
-  }
-  return result
+function useLayout() {
+  return useMemo(
+    () =>
+      new Layout({ pegsWide: 19, pegsTall: 19, pegSpacing: 30, pegMargin: 30 }),
+    []
+  )
 }
 
-export default function Board() {
-  const [board, setBoard] = useState<Board>(emptyBoard())
-  const setBoardPeg = useCallback(
-    (i: number, j: number, value: boolean) => {
+type SetPegFunction = (pegId: number, color: boolean) => void
+
+function useBoardState(layout: Layout): [BoardData, SetPegFunction] {
+  const [board, setBoard] = useState<BoardData>(() => {
+    const initialBoard: BoardData = []
+    for (const row of layout.rowIndicies()) {
+      const boardRowData: BoardRowData = []
+      for (const [col, index] of layout.colIndicies(row)) {
+        const [x, y] = layout.pointForRowCol(row, col)
+        boardRowData.push({
+          pegId: index,
+          x,
+          y,
+          voronoiPath: layout.voronoi.renderCell(index),
+          color: false
+        })
+      }
+      initialBoard.push(boardRowData)
+    }
+    return initialBoard
+  })
+  const setPeg: SetPegFunction = useCallback(
+    (pegId: number, color: boolean) => {
       setBoard(prevBoard => {
-        let nextBoard = Array.from(prevBoard)
-        nextBoard[i] = Array.from(nextBoard[i])
-        nextBoard[i][j] = value
+        const [row, col] = layout.rowColFromIndex(pegId)
+        const nextBoard = Array.from(prevBoard)
+        nextBoard[row] = Array.from(nextBoard[row])
+        nextBoard[row][col].color = color
         return nextBoard
       })
     },
-    [setBoard]
+    [setBoard, layout]
   )
+  return [board, setPeg]
+}
+
+export default function Board() {
+  const layout = useLayout()
+  const [board, setPeg] = useBoardState(layout)
 
   return (
     <>
       <svg
         style={{ background: '#222' }}
-        height={pegSpacing * (pegsTall - 1) + pegMargin * 2}
-        width={pegSpacing * (pegsWide - 1) + pegMargin * 2}
+        height={layout.height}
+        width={layout.width}
       >
-        {board.map((boardColumn, i) => {
+        {board.map((boardRow, rowIndex) => {
           return (
-            <BoardColumn
-              key={i}
-              i={i}
-              boardColumn={boardColumn}
-              setBoardPeg={setBoardPeg}
+            <BoardRow
+              key={rowIndex}
+              rowIndex={rowIndex}
+              boardRow={boardRow}
+              setPeg={setPeg}
             />
           )
         })}
@@ -57,21 +82,27 @@ export default function Board() {
   )
 }
 
-type BoardColumnProps = {
-  i: number
-  boardColumn: BoardColumnData
-  setBoardPeg: (i: number, j: number, value: boolean) => void
+type BoardRowProps = {
+  rowIndex: number
+  boardRow: BoardRowData
+  setPeg: (pegId: number, color: boolean) => void
 }
 
-const BoardColumn = memo(function BoardColumn({
-  i,
-  boardColumn,
-  setBoardPeg
-}: BoardColumnProps) {
+const BoardRow = memo(function BoardRow({ boardRow, setPeg }: BoardRowProps) {
   return (
     <>
-      {boardColumn.map((isOn, j) => {
-        return <Peg key={j} i={i} j={j} isOn={isOn} setBoardPeg={setBoardPeg} />
+      {boardRow.map(({ x, y, pegId, color, voronoiPath }, colIndex) => {
+        return (
+          <Peg
+            key={colIndex}
+            pegId={pegId}
+            x={x}
+            y={y}
+            color={color}
+            voronoiPath={voronoiPath}
+            setPeg={setPeg}
+          />
+        )
       })}
     </>
   )

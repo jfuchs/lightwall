@@ -1,39 +1,53 @@
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useState } from 'react'
 
-const pegRadius = 20
-const pegSpacing = 70
-const pegMargin = 40
+const pegRadius = 5
 
 type PegProps = {
-  i: number
-  j: number
-  isOn: boolean
-  setBoardPeg: (i: number, j: number, value: boolean) => void
+  pegId: number
+  x: number
+  y: number
+  color: boolean
+  voronoiPath: string
+  setPeg: (id: number, color: boolean) => void
 }
 
-const Peg = memo(function Peg({ i, j, isOn, setBoardPeg }: PegProps) {
+const Peg = memo(function Peg({
+  pegId,
+  x,
+  y,
+  color,
+  voronoiPath,
+  setPeg
+}: PegProps) {
   const onClick = useCallback(
     () => {
-      console.info(`Setting (${i}, ${j}) to ${!isOn}`)
-      setBoardPeg(i, j, !isOn)
+      setPeg(pegId, !color)
     },
-    [i, j, isOn, setBoardPeg]
+    [pegId, color, setPeg]
   )
-
-  const x = pegSpacing * i * 0.5 + pegMargin
-  const y = pegSpacing * j + pegMargin + (i % 2 === 0 ? 0 : pegSpacing / 2)
+  const [isHover, setIsHover] = useState<boolean>(false)
 
   return (
-    <circle
-      cx={x}
-      cy={y}
-      r={pegRadius}
-      onClick={onClick}
-      style={{
-        fill: isOn ? '#0f0' : '#000',
-        cursor: 'pointer'
-      }}
-    />
+    <>
+      <circle
+        cx={x}
+        cy={y}
+        r={isHover ? pegRadius * 2 : pegRadius}
+        style={{
+          fill: color ? '#0f0' : '#555'
+        }}
+      />
+      <path
+        d={voronoiPath}
+        fillOpacity="0"
+        onClick={onClick}
+        onMouseEnter={() => setIsHover(true)}
+        onMouseLeave={() => setIsHover(false)}
+        style={{
+          cursor: 'crosshair'
+        }}
+      />
+    </>
   )
 })
 export default Peg
