@@ -1,14 +1,16 @@
 import { memo, useCallback, useState } from 'react'
 
+import { Color, SetPegFunction } from './Board'
+
 const pegRadius = 5
 
 type PegProps = {
   pegId: number
   x: number
   y: number
-  color: boolean
+  color: Color
   voronoiPath: string
-  setPeg: (id: number, color: boolean) => void
+  setPeg: SetPegFunction
 }
 
 const Peg = memo(function Peg({
@@ -19,14 +21,16 @@ const Peg = memo(function Peg({
   voronoiPath,
   setPeg
 }: PegProps) {
-  const onClick = useCallback(
+  const set = useCallback(
     () => {
-      setPeg(pegId, !color)
+      setPeg(pegId)
     },
     [pegId, color, setPeg]
   )
   const [isHover, setIsHover] = useState<boolean>(false)
 
+  const colorCode =
+    color === Color.Green ? '#0f0' : color === Color.Orange ? '#fa0' : '#555'
   return (
     <>
       <circle
@@ -34,14 +38,19 @@ const Peg = memo(function Peg({
         cy={y}
         r={isHover ? pegRadius * 2 : pegRadius}
         style={{
-          fill: color ? '#0f0' : '#555'
+          fill: colorCode
         }}
       />
       <path
         d={voronoiPath}
         fillOpacity="0"
-        onClick={onClick}
-        onMouseEnter={() => setIsHover(true)}
+        onMouseDown={set}
+        onMouseEnter={e => {
+          setIsHover(true)
+          if (e.buttons === 1) {
+            set()
+          }
+        }}
         onMouseLeave={() => setIsHover(false)}
         style={{
           cursor: 'crosshair'

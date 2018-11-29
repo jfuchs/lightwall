@@ -1,16 +1,25 @@
-import { memo, useState, useCallback, useMemo } from 'react'
-import Peg from './Peg'
+import { memo, useCallback, useMemo, useState } from 'react'
 import Layout from './Layout'
+import Peg from './Peg'
+import Palette from './Palette'
 
+export enum Color {
+  None = 'null',
+  Green = 'green',
+  Orange = 'orange'
+}
 type PegData = {
   pegId: number
   x: number
   y: number
   voronoiPath: string
-  color: boolean
+  color: Color
 }
 type BoardRowData = Array<PegData>
 type BoardData = Array<BoardRowData>
+
+export type SetPegFunction = (pegId: number) => void
+export type SetColorFunction = (color: Color) => void
 
 function useLayout() {
   return useMemo(
@@ -20,9 +29,9 @@ function useLayout() {
   )
 }
 
-type SetPegFunction = (pegId: number, color: boolean) => void
-
-function useBoardState(layout: Layout): [BoardData, SetPegFunction] {
+function useBoardState(
+  layout: Layout
+): [BoardData, SetPegFunction, Color, SetColorFunction] {
   const [board, setBoard] = useState<BoardData>(() => {
     const initialBoard: BoardData = []
     for (const row of layout.rowIndicies()) {
@@ -34,15 +43,16 @@ function useBoardState(layout: Layout): [BoardData, SetPegFunction] {
           x,
           y,
           voronoiPath: layout.voronoi.renderCell(index),
-          color: false
+          color: Color.None
         })
       }
       initialBoard.push(boardRowData)
     }
     return initialBoard
   })
+  const [color, setColor] = useState<Color>(Color.Green)
   const setPeg: SetPegFunction = useCallback(
-    (pegId: number, color: boolean) => {
+    (pegId: number) => {
       setBoard(prevBoard => {
         const [row, col] = layout.rowColFromIndex(pegId)
         const nextBoard = Array.from(prevBoard)
@@ -51,17 +61,18 @@ function useBoardState(layout: Layout): [BoardData, SetPegFunction] {
         return nextBoard
       })
     },
-    [setBoard, layout]
+    [setBoard, layout, color]
   )
-  return [board, setPeg]
+  return [board, setPeg, color, setColor]
 }
 
 export default function Board() {
   const layout = useLayout()
-  const [board, setPeg] = useBoardState(layout)
+  const [board, setPeg, color, setColor] = useBoardState(layout)
 
   return (
     <>
+      <Palette currentColor={color} setColor={setColor} />
       <svg
         style={{ background: '#222' }}
         height={layout.height}
@@ -85,7 +96,7 @@ export default function Board() {
 type BoardRowProps = {
   rowIndex: number
   boardRow: BoardRowData
-  setPeg: (pegId: number, color: boolean) => void
+  setPeg: SetPegFunction
 }
 
 const BoardRow = memo(function BoardRow({ boardRow, setPeg }: BoardRowProps) {
